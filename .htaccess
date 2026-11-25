@@ -1,0 +1,62 @@
+# =====================================================================
+#  Apache configuration (needs mod_rewrite; AllowOverride All)
+# =====================================================================
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # --- Uncomment to force HTTPS in production ---
+  # RewriteCond %{HTTPS} off
+  # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # --- Never serve private files/folders ---
+  RewriteRule ^(config|includes|database|scripts|storage)(/|$) - [F,L]
+  RewriteRule (^|/)\.(env|git|htaccess) - [F,L]
+  RewriteRule \.(sql|md|log|env|example)$ - [F,L]
+
+  # --- Dynamic robots.txt / sitemap.xml ---
+  RewriteRule ^robots\.txt$  robots.php      [L]
+  RewriteRule ^sitemap\.xml$ sitemap-xml.php [L]
+
+  # --- Clean URLs: /about -> about.php, /tools/word-counter -> tools/word-counter.php ---
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME}.php -f
+  RewriteRule ^(.+?)/?$ $1.php [L]
+
+  # --- Anything else that does not exist => branded 404 page ---
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ 404.php [L]
+</IfModule>
+
+# --- Security headers ---
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+# --- Compression ---
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# --- Browser caching for static assets (files use ?v=timestamp for cache-busting) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+</IfModule>
+
+# --- Never expose these PHP files directly if you do not need them ---
+<FilesMatch "^(sitemap-xml|robots)\.php$">
+  # They are reachable via /sitemap.xml and /robots.txt; direct access is harmless.
+</FilesMatch>
